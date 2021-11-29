@@ -85,7 +85,7 @@ impl Sphere{
         if self.is_ray_intersect(R) == false {return 0;}
         let mut br : f32 = 0.;
         for l in L {
-            let light_ray = Ray {pos : R.pos + R.dir * (self.give_t(R) - 0.001), dir : (R.pos + R.dir * self.give_t(R) - l.pos).normalize()};
+            let light_ray = Ray {pos : R.pos + R.dir * (self.give_t(R) - 0.001), dir : vec3!()-((R.pos + R.dir * self.give_t(R) - l.pos)).normalize()};
             let mut is_light_ray_intersect : bool = false;
             for o in O {is_light_ray_intersect = is_light_ray_intersect || o.is_ray_intersect(&light_ray);}
             if is_light_ray_intersect == false {br += l.int * (vec3!() - R.dir).dot(l.pos - self.pos);}
