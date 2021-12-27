@@ -32,22 +32,26 @@ struct Light {
 
 pub enum Object3d {
     Sphere(Sphere),
+    Trig(Trig),
 }
 
 impl Object3d {
     pub fn is_ray_intersect(&self, R: &Ray) -> bool {
         match self {
             &Object3d::Sphere(ref s) => s.is_ray_intersect(R),
+            &Object3d::Trig(ref s)   => s.is_ray_intersect(R),
         }
     }
     pub fn give_t(&self, R: &Ray) -> f32 {
         match self {
             &Object3d::Sphere(ref s) => s.give_t(R),
+            &Object3d::Trig(ref s) => s.give_t(R),
         }
     }
     pub fn get_ray_brightness(&self, R: &Ray, L: &Vec<&Light>, O: &Vec<&Object3d>) -> usize {
         match self {
             &Object3d::Sphere(ref s) => s.get_ray_brightness(R, L, O),
+            &Object3d::Trig(ref s) => s.get_ray_brightness(R, L, O),
         }
     }
 }
@@ -111,6 +115,62 @@ impl Sphere {
     }
 }
 
+struct Trig {
+    v0 : Vec3,
+    v1 : Vec3,
+    v2 : Vec3,
+}
+
+impl Trig {
+    fn is_ray_intersect(&self, R: &Ray) -> bool {
+        let norm : Vec3 = (self.v1 - self.v0).cross(self.v2 - self.v0);
+        let A = norm.x; let B = norm.y; let C = norm.z;
+        let D = - (A * self.v0.x + B * self.v0.y + C * self.v0.z);
+        if A * R.dir.x + B * R.dir.y  + C * R.dir.z == 0.0 {return false;}
+        let t = - (D + A * R.pos.x + B * R.pos.y + C * R.pos.z) / (A * R.dir.x + B * R.dir.y  + C * R.dir.z);
+        if t < 0.0 {return false;}
+        let M = R.pos + t * R.dir;
+        let a = self.v0 - M;
+        let b = self.v1 - M;
+        let c = self.v2 - M;
+        let base = (self.v2 - self.v0).cross(self.v1 - self.v0).normalize();
+        if (a.cross(b).normalize() + base).length() > 0.01 {return false;}
+        if (b.cross(c).normalize() + base).length() > 0.01 {return false;}
+        if (c.cross(a).normalize() + base).length() > 0.01 {return false;}
+        true
+    }
+    fn give_t(&self, R: &Ray) -> f32 {
+        let norm : Vec3 = (self.v1 - self.v0).cross(self.v2 - self.v0);
+        let A = norm.x; let B = norm.y; let C = norm.z;
+        let D = - (A * self.v0.x + B * self.v0.y + C * self.v0.z);
+        if A * R.dir.x + B * R.dir.y  + C * R.dir.z == 0.0 {return -1.0;}
+        let t = - (D + A * R.pos.x + B * R.pos.y + C * R.pos.z) / (A * R.dir.x + B * R.dir.y  + C * R.dir.z);
+        t
+    }
+    fn get_ray_brightness(&self, R: &Ray, L: &Vec<&Light>, O: &Vec<&Object3d>) -> usize {
+        if self.is_ray_intersect(R) == false {
+            return 0;
+        }
+        let mut br: f32 = 0.;
+        for l in L {
+            let light_ray = Ray {
+                pos : R.pos + R.dir * (self.give_t(R) - 0.001),
+                dir : vec3!() - (R.pos + R.dir * self.give_t(R) - l.pos).normalize(),
+            };
+            let mut is_light_ray_intersect: bool = false;
+            for o in O {
+                is_light_ray_intersect = is_light_ray_intersect || o.is_ray_intersect(&light_ray);
+            }
+            if is_light_ray_intersect == false {
+                br += l.int * (vec3!() - R.dir).dot(l.pos - R.dir * self.give_t(R));
+            }
+        }
+        let br: i32 = br as i32;
+        let br: usize = br as usize;
+        br
+    }
+}
+
 fn cast_ray(O: Vec<&Object3d>, L: Vec<&Light>, R: &Ray) -> usize {
     let mut V: Vec<&Object3d> = Vec::new();
     for o in &O {
@@ -165,26 +225,120 @@ impl Play {
     }
 
     fn get_brightness(cam: &Camera, u: f32, v: f32, t: f32) -> usize {
-        let S: Object3d = Object3d::Sphere(Sphere {
-            pos: vec3!(0.0, 0.0, 1.0),
-            rad: 0.5,
+        let mut vertex = vec!(vec!(vec!(vec3!(); 2); 2); 2);
+        vertex[0][0][0] = vec3!(-1.0,-1.0,-1.0);
+        vertex[0][0][1] = vec3!(-1.0,-1.0, 1.0);
+        vertex[0][1][0] = vec3!(-1.0, 1.0,-1.0);
+        vertex[0][1][1] = vec3!(-1.0, 1.0, 1.0);
+        vertex[1][0][0] = vec3!( 1.0,-1.0,-1.0);
+        vertex[1][0][1] = vec3!( 1.0,-1.0, 1.0);
+        vertex[1][1][0] = vec3!( 1.0, 1.0,-1.0);
+        vertex[1][1][1] = vec3!( 1.0, 1.0, 1.0);
+        
+        let mut TT : Vec<Object3d> = vec!();
+
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[0][0][0],
+            v1: vertex[0][1][0],
+            v2: vertex[0][0][1],
         });
-        let S1: Object3d = Object3d::Sphere(Sphere {
-            pos: vec3!(0.0, 1.0, 1.0),
-            rad: 0.7,
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[0][1][1],
+            v1: vertex[0][1][0],
+            v2: vertex[0][0][1],
         });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[1][0][0],
+            v1: vertex[1][1][0],
+            v2: vertex[1][0][1],
+        });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[1][1][1],
+            v1: vertex[1][0][1],
+            v2: vertex[1][1][0],
+        });
+        TT.push(T);
+
+
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[0][0][0],
+            v1: vertex[1][0][0],
+            v2: vertex[0][0][1],
+        });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[1][0][1],
+            v1: vertex[1][0][0],
+            v2: vertex[0][0][1],
+        });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[0][1][0],
+            v1: vertex[1][1][0],
+            v2: vertex[0][1][1],
+        });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[1][1][1],
+            v1: vertex[0][1][1],
+            v2: vertex[1][1][0],
+        });
+        TT.push(T);
+
+
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[0][0][0],
+            v1: vertex[0][1][0],
+            v2: vertex[1][0][0],
+        });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[1][1][0],
+            v1: vertex[0][1][0],
+            v2: vertex[1][0][0],
+        });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[0][0][1],
+            v1: vertex[0][1][1],
+            v2: vertex[1][0][1],
+        });
+        TT.push(T);
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vertex[1][1][1],
+            v1: vertex[1][0][1],
+            v2: vertex[0][1][1],
+        });
+        TT.push(T);
+
+
+        let T : Object3d = Object3d::Trig(Trig {
+            v0: vec3!(),
+            v1: vec3!(),
+            v2: vec3!(),
+        });
+        TT.push(T);
+
+
         let R: Ray = cam.get_ray(u, v);
         let L: Light = Light {
-            pos: vec3!(1.0 * t.sin(), 0.0, 1.0 * t.cos()),
-            int: 5.0,
+            pos: vec3!(2.0, 2.0,-10.0),
+            int: 1.0,
         };
-        cast_ray(vec![&S, &S1], vec![&L], &R)
+        let mut tt : Vec<&Object3d> = Vec::new();
+        for i in 0..TT.len()-1 {
+            tt.push(&TT[i]);
+        }
+        cast_ray(tt, vec![&L], &R)
     }
 
     fn render(&mut self, t: f32) {
         let cam: Camera = Camera {
-            pos: vec3!(),
-            dir: vec3!(0.0, 0.0, 1.0).normalize(),
+            pos: vec3!( 2.0, 2.0,-3.0),  
+            dir: vec3!(-1.0,-1.0, 1.0).normalize(),
         };
         let mut u: f32;
         let mut v: f32;
