@@ -330,7 +330,7 @@ impl Play {
         let R: Ray = cam.get_ray(u, v);
         let L: Light = Light {
             pos: vec3!(2.0, 3.0,-5.0),
-            int: 25.0,
+            int: 100.0,
         };
         let mut tt : Vec<&Object3d> = Vec::new();
         for i in 0..TT.len()-1 {
