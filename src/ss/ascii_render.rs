@@ -106,7 +106,7 @@ impl Sphere {
                 is_light_ray_intersect = is_light_ray_intersect || o.is_ray_intersect(&light_ray);
             }
             if is_light_ray_intersect == false {
-                br += l.int * (vec3!() - R.dir).dot(l.pos - self.pos) / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length())
+                br += l.int * (vec3!() - R.dir).dot(l.pos - (R.pos + R.dir * self.give_t(R))) / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length())
                                                                       / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length());
             }
         }
@@ -163,8 +163,8 @@ impl Trig {
                 is_light_ray_intersect = is_light_ray_intersect || o.is_ray_intersect(&light_ray);
             }
             if is_light_ray_intersect == false {
-                br += l.int * (vec3!() - R.dir).dot(l.pos - R.dir * self.give_t(R)) / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length())
-                                                                                    / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length());
+                br += l.int * (vec3!() - R.dir).dot(l.pos - (R.pos + R.dir * self.give_t(R))) / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length())
+                                                                                              / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length());
             }
         }
         let br: i32 = br as i32;
@@ -218,7 +218,7 @@ impl Play {
             self.render(t);
             print!("{}[2J", 27 as char);
             self.display();
-            t += 0.01;
+            t += 0.05;
         }
     }
 
@@ -227,15 +227,17 @@ impl Play {
     }
 
     fn get_brightness(cam: &Camera, u: f32, v: f32, t: f32) -> usize {
+        let pi = std::f32::consts::PI; 
         let mut vertex = vec!(vec!(vec!(vec3!(); 2); 2); 2);
-        vertex[0][0][0] = vec3!(-1.0,-1.0,-1.0);
-        vertex[0][0][1] = vec3!(-1.0,-1.0, 1.0);
-        vertex[0][1][0] = vec3!(-1.0, 1.0,-1.0);
-        vertex[0][1][1] = vec3!(-1.0, 1.0, 1.0);
-        vertex[1][0][0] = vec3!( 1.0,-1.0,-1.0);
-        vertex[1][0][1] = vec3!( 1.0,-1.0, 1.0);
-        vertex[1][1][0] = vec3!( 1.0, 1.0,-1.0);
-        vertex[1][1][1] = vec3!( 1.0, 1.0, 1.0);
+        vertex[0][0][0] = vec3!(-1.0,   - (2.0 as f32).sqrt() * (t + pi / 4.0).sin(),   - (2.0 as f32).sqrt() * (t + pi / 4.0).cos());
+        vertex[0][0][1] = vec3!(-1.0,   - (2.0 as f32).sqrt() * (t + pi / 4.0).cos(),     (2.0 as f32).sqrt() * (t + pi / 4.0).sin());
+        vertex[0][1][0] = vec3!(-1.0,     (2.0 as f32).sqrt() * (t + pi / 4.0).cos(),   - (2.0 as f32).sqrt() * (t + pi / 4.0).sin());
+        vertex[0][1][1] = vec3!(-1.0,     (2.0 as f32).sqrt() * (t + pi / 4.0).sin(),     (2.0 as f32).sqrt() * (t + pi / 4.0).cos());
+        vertex[1][0][0] = vec3!( 1.0,   - (2.0 as f32).sqrt() * (t + pi / 4.0).sin(),   - (2.0 as f32).sqrt() * (t + pi / 4.0).cos());
+        vertex[1][0][1] = vec3!( 1.0,   - (2.0 as f32).sqrt() * (t + pi / 4.0).cos(),     (2.0 as f32).sqrt() * (t + pi / 4.0).sin());
+        vertex[1][1][0] = vec3!( 1.0,     (2.0 as f32).sqrt() * (t + pi / 4.0).cos(),   - (2.0 as f32).sqrt() * (t + pi / 4.0).sin());
+        vertex[1][1][1] = vec3!( 1.0,     (2.0 as f32).sqrt() * (t + pi / 4.0).sin(),     (2.0 as f32).sqrt() * (t + pi / 4.0).cos());
+
         
         let mut TT : Vec<Object3d> = vec!();
 
@@ -327,8 +329,8 @@ impl Play {
 
         let R: Ray = cam.get_ray(u, v);
         let L: Light = Light {
-            pos: vec3!(2.0, 2.0,-10.0),
-            int: 100.0,
+            pos: vec3!(2.0, 3.0,-5.0),
+            int: 25.0,
         };
         let mut tt : Vec<&Object3d> = Vec::new();
         for i in 0..TT.len()-1 {
@@ -339,8 +341,8 @@ impl Play {
 
     fn render(&mut self, t: f32) {
         let cam: Camera = Camera {
-            pos: vec3!( 2.0, 2.0,-3.0),  
-            dir: vec3!(-1.0,-1.0, 1.0).normalize(),
+            pos: vec3!( 1.2, 0.0,-3.0),  
+            dir: vec3!( 0.0, 0.0, 1.0).normalize(),
         };
         let mut u: f32;
         let mut v: f32;
