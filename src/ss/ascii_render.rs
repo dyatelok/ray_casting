@@ -106,7 +106,8 @@ impl Sphere {
                 is_light_ray_intersect = is_light_ray_intersect || o.is_ray_intersect(&light_ray);
             }
             if is_light_ray_intersect == false {
-                br += l.int * (vec3!() - R.dir).dot(l.pos - self.pos);
+                br += l.int * (vec3!() - R.dir).dot(l.pos - self.pos) / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length())
+                                                                      / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length());
             }
         }
         let br: i32 = br as i32;
@@ -162,7 +163,8 @@ impl Trig {
                 is_light_ray_intersect = is_light_ray_intersect || o.is_ray_intersect(&light_ray);
             }
             if is_light_ray_intersect == false {
-                br += l.int * (vec3!() - R.dir).dot(l.pos - R.dir * self.give_t(R));
+                br += l.int * (vec3!() - R.dir).dot(l.pos - R.dir * self.give_t(R)) / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length())
+                                                                                    / (self.give_t(R) + (l.pos - (R.pos + self.give_t(R) * R.dir)).length());
             }
         }
         let br: i32 = br as i32;
@@ -181,7 +183,7 @@ fn cast_ray(O: Vec<&Object3d>, L: Vec<&Light>, R: &Ray) -> usize {
     let mut mem: &Object3d;
     let memt: f32;
     if V.len() == 0 {
-        return (0 as usize);
+        return 0 as usize;
     }
     mem = V[0];
     memt = V[0].give_t(R);
@@ -326,7 +328,7 @@ impl Play {
         let R: Ray = cam.get_ray(u, v);
         let L: Light = Light {
             pos: vec3!(2.0, 2.0,-10.0),
-            int: 1.0,
+            int: 100.0,
         };
         let mut tt : Vec<&Object3d> = Vec::new();
         for i in 0..TT.len()-1 {
